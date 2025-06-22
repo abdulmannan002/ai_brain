@@ -3,7 +3,14 @@ uvicorn[standard]
 pydantic
 aiohttp
 asyncpg # For PostgreSQL
-# spacy # For NLP
-# boto3 # For AWS S3
-# kafka-python # For Kafka
-# openai-whisper # For Speech-to-text 
+spacy # For NLP
+boto3 # For AWS S3
+kafka-python # For Kafka
+openai-whisper # For Speech-to-text
+python-multipart # For file uploads
+python-jose[cryptography] # For JWT handling
+passlib[bcrypt] # For password hashing
+python-dotenv # For environment variables
+httpx # For HTTP client
+numpy # For numerical operations
+scikit-learn # For ML operations 
