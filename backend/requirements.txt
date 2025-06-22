@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+aiohttp
+asyncpg # For PostgreSQL
+# spacy # For NLP
+# boto3 # For AWS S3
+# kafka-python # For Kafka
+# openai-whisper # For Speech-to-text 
