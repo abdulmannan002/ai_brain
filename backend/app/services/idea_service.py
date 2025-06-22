@@ -7,7 +7,7 @@ import asyncpg
 from fastapi import HTTPException, status
 
 from ..models.idea import IdeaCreate, IdeaUpdate, IdeaResponse, IdeaSearchParams
-from ..core.database import get_db_connection
+from ..core.database import db_manager
 
 
 class IdeaService:
@@ -18,7 +18,8 @@ class IdeaService:
     
     async def create_idea(self, idea_data: IdeaCreate, user_id: str) -> IdeaResponse:
         """Create a new idea"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             idea_id = await conn.fetchval(
                 """
                 INSERT INTO ideas (content, source, timestamp, user_id) 
@@ -41,6 +42,8 @@ class IdeaService:
                 emotion=None,
                 transformed_output=None
             )
+        finally:
+            await db_manager.pool.release(conn)
     
     async def get_user_ideas(
         self, 
@@ -48,7 +51,8 @@ class IdeaService:
         params: IdeaSearchParams
     ) -> List[IdeaResponse]:
         """Get user's ideas with filtering and pagination"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             # Build query with filters
             query = "SELECT * FROM ideas WHERE user_id = $1"
             query_params = [user_id]
@@ -87,10 +91,13 @@ class IdeaService:
                 )
                 for idea in ideas
             ]
+        finally:
+            await db_manager.pool.release(conn)
     
     async def search_ideas(self, user_id: str, query: str) -> List[IdeaResponse]:
         """Search ideas using full-text search"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             ideas = await conn.fetch(
                 """
                 SELECT * FROM ideas 
@@ -114,10 +121,13 @@ class IdeaService:
                 )
                 for idea in ideas
             ]
+        finally:
+            await db_manager.pool.release(conn)
     
     async def get_idea_by_id(self, idea_id: int, user_id: str) -> Optional[IdeaResponse]:
         """Get idea by ID for specific user"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             idea = await conn.fetchrow(
                 "SELECT * FROM ideas WHERE id = $1 AND user_id = $2",
                 idea_id, user_id
@@ -136,6 +146,8 @@ class IdeaService:
                 emotion=idea["emotion"],
                 transformed_output=idea["transformed_output"]
             )
+        finally:
+            await db_manager.pool.release(conn)
     
     async def update_idea(
         self, 
@@ -144,7 +156,8 @@ class IdeaService:
         idea_data: IdeaUpdate
     ) -> Optional[IdeaResponse]:
         """Update an idea"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             # Check if idea exists and belongs to user
             existing_idea = await conn.fetchrow(
                 "SELECT * FROM ideas WHERE id = $1 AND user_id = $2",
@@ -197,20 +210,26 @@ class IdeaService:
             await conn.execute(query, *query_params)
             
             return await self.get_idea_by_id(idea_id, user_id)
+        finally:
+            await db_manager.pool.release(conn)
     
     async def delete_idea(self, idea_id: int, user_id: str) -> bool:
         """Delete an idea"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             result = await conn.execute(
                 "DELETE FROM ideas WHERE id = $1 AND user_id = $2",
                 idea_id, user_id
             )
             
             return result == "DELETE 1"
+        finally:
+            await db_manager.pool.release(conn)
     
     async def get_user_stats(self, user_id: str) -> Dict[str, Any]:
         """Get user's idea statistics"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             # Total ideas
             total_ideas = await conn.fetchval(
                 "SELECT COUNT(*) FROM ideas WHERE user_id = $1",
@@ -251,6 +270,8 @@ class IdeaService:
                 "themes_count": themes_count or 0,
                 "emotions_count": emotions_count or 0
             }
+        finally:
+            await db_manager.pool.release(conn)
 
 
 # Global idea service instance

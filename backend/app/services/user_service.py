@@ -6,7 +6,7 @@ from datetime import datetime
 import asyncpg
 
 from ..models.user import UserCreate, UserUpdate, UserResponse
-from ..core.database import get_db_connection
+from ..core.database import db_manager
 
 
 class UserService:
@@ -17,7 +17,8 @@ class UserService:
     
     async def create_user(self, user_data: UserCreate) -> UserResponse:
         """Create a new user"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             user_id = await conn.fetchval(
                 """
                 INSERT INTO users (auth0_id, email, subscription, created_at) 
@@ -35,10 +36,13 @@ class UserService:
                 email=user_data.email,
                 subscription=user_data.subscription
             )
+        finally:
+            await db_manager.pool.release(conn)
     
     async def get_user_by_auth0_id(self, auth0_id: str) -> Optional[UserResponse]:
         """Get user by Auth0 ID"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             user = await conn.fetchrow(
                 "SELECT * FROM users WHERE auth0_id = $1",
                 auth0_id
@@ -52,10 +56,13 @@ class UserService:
                 email=user["email"],
                 subscription=user["subscription"]
             )
+        finally:
+            await db_manager.pool.release(conn)
     
     async def get_user_by_id(self, user_id: int) -> Optional[UserResponse]:
         """Get user by ID"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             user = await conn.fetchrow(
                 "SELECT * FROM users WHERE id = $1",
                 user_id
@@ -69,10 +76,13 @@ class UserService:
                 email=user["email"],
                 subscription=user["subscription"]
             )
+        finally:
+            await db_manager.pool.release(conn)
     
     async def update_user(self, user_id: int, user_data: UserUpdate) -> Optional[UserResponse]:
         """Update a user"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             # Check if user exists
             existing_user = await conn.fetchrow(
                 "SELECT * FROM users WHERE id = $1",
@@ -110,16 +120,21 @@ class UserService:
             await conn.execute(query, *query_params)
             
             return await self.get_user_by_id(user_id)
+        finally:
+            await db_manager.pool.release(conn)
     
     async def delete_user(self, user_id: int) -> bool:
         """Delete a user"""
-        async with get_db_connection() as conn:
+        conn = await db_manager.get_connection()
+        try:
             result = await conn.execute(
                 "DELETE FROM users WHERE id = $1",
                 user_id
             )
             
             return result == "DELETE 1"
+        finally:
+            await db_manager.pool.release(conn)
     
     async def get_or_create_user(self, auth0_id: str, email: str) -> UserResponse:
         """Get existing user or create new one"""

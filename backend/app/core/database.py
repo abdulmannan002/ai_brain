@@ -40,14 +40,12 @@ class DatabaseManager:
             raise RuntimeError("Database not initialized. Call initialize() first.")
         return self._pool
     
-    @asynccontextmanager
     async def get_connection(self):
         """Get database connection from pool"""
         if not self._pool:
             raise RuntimeError("Database not initialized. Call initialize() first.")
         
-        async with self._pool.acquire() as connection:
-            yield connection
+        return await self._pool.acquire()
 
 
 # Global database manager instance
@@ -56,5 +54,8 @@ db_manager = DatabaseManager()
 
 async def get_db_connection() -> AsyncGenerator[asyncpg.Connection, None]:
     """Dependency to get database connection"""
-    async with db_manager.get_connection() as connection:
-        yield connection 
+    conn = await db_manager.get_connection()
+    try:
+        yield conn
+    finally:
+        await db_manager.pool.release(conn) 

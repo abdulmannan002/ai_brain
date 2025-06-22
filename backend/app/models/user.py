@@ -3,7 +3,13 @@ User data models
 """
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
+
+# Fallback for EmailStr if not available
+try:
+    from pydantic import EmailStr
+except ImportError:
+    EmailStr = str  # Fallback to regular string
 
 
 class UserBase(BaseModel):
